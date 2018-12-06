@@ -9,7 +9,7 @@ import android.os.Bundle;
 import android.telephony.SmsMessage;
 import android.util.Log;
 import android.widget.Toast;
-import com.amazon.kumarnzt.viyuktasiddhi.model.Message;
+import com.amazon.kumarnzt.viyuktasiddhi.model.CustomerSellerDataModel;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
@@ -19,6 +19,8 @@ public class MySmsReceiver extends BroadcastReceiver {
     private static final String TAG = MySmsReceiver.class.getSimpleName();
     private static final String pdu_type = "pdus";
     private static ObjectMapper mapper = new ObjectMapper();
+
+    private static final String OTP_REGEX = "^[0-9]{4}$";
 
     @TargetApi(Build.VERSION_CODES.M)
     @Override
@@ -50,18 +52,39 @@ public class MySmsReceiver extends BroadcastReceiver {
                 // Log and display the SMS message.
                 Log.d(TAG, "onReceive: " + strMessage);
                 Toast.makeText(context, strMessage, Toast.LENGTH_LONG).show();
-                processMessage(msgs[i].getMessageBody());
+                processMessage(msgs[i].getMessageBody(), msgs[i].getOriginatingAddress());
             }
         }
     }
 
-    private void processMessage(final String messageString) {
+    private void processMessage(final String messageString, final String originatingAddress) {
+        final String strippedPhoneNumber = stripPhoneNumber(originatingAddress);
+        if (messageString.matches(OTP_REGEX)) {
+            processOTPMessage(messageString, strippedPhoneNumber);
+        } else {
+            processRequestMessage(messageString, strippedPhoneNumber);
+        }
+    }
+
+    private void processRequestMessage(final String messageString, final String originatingAddress) {
         try {
-            Message message= mapper.readValue(messageString, Message.class);
-            Log.d(TAG, message.getMerchantId());
+            CustomerSellerDataModel message= mapper.readValue(messageString, CustomerSellerDataModel.class);
+            Log.d(TAG, message.getStoreId());
             Log.d(TAG, message.getAmount().toString());
+            MessageUtils.sendMessage(originatingAddress, "OTP for offline amazon payment " + OTPHandler.getOTP(originatingAddress));
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void processOTPMessage(final String messageString, final String originatingAddress) {
+        if (OTPHandler.validateOTP(originatingAddress, messageString)) {
+            //TODO: call to pay
+            Log.d(TAG,"correct otp");
+        }
+    }
+
+    private String stripPhoneNumber(final String phoneNumber) {
+        return phoneNumber.replaceFirst("^\\+91", "");
     }
 }

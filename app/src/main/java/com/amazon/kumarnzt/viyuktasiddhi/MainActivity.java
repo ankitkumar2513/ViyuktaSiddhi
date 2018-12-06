@@ -7,19 +7,15 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.telephony.SmsManager;
-import android.util.Log;
-import android.view.View;
 import android.view.Menu;
+import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
-import com.amazon.kumarnzt.viyuktasiddhi.model.Message;
 import org.codehaus.jackson.map.ObjectMapper;
-
-import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int MY_PERMISSIONS_REQUEST = 1;
+    private static final String PHONE_NUMBER = "9427635124";
     private static ObjectMapper mapper = new ObjectMapper();
     Button button;
 
@@ -53,10 +49,10 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    public void sendMessage(View view) {
+    /*public void sendMessage(View view) {
         try {
             Toast.makeText(MainActivity.this, "Sending message", Toast.LENGTH_SHORT).show();
-            sendMessage("9427635124", generateMessage("ABCD", 400.0d));
+            sendMessage(PHONE_NUMBER, generateMessage("ABCD", 400.0d));
         } catch (Exception e) {
             Log.d("Sending", "Error while sending message", e);
         }
@@ -65,12 +61,15 @@ public class MainActivity extends AppCompatActivity {
     private void sendMessage(final String phone, final String message) {
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage("+91" + phone, null, message, null, null);
+    }*/
+
+    public void sendMessage(View view) {
     }
 
-    private String generateMessage(final String merchantId, final Double amount) throws IOException {
-        Message message = new Message();
+    /*private String generateMessage(final String merchantId, final Double amount) throws IOException {
+         message = new Message();
         message.setAmount(amount);
         message.setMerchantId(merchantId);
         return mapper.writeValueAsString(message);
-    }
+    }*/
 }
