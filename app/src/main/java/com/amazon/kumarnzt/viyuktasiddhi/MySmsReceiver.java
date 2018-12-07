@@ -10,6 +10,7 @@ import android.telephony.SmsMessage;
 import android.util.Log;
 import android.widget.Toast;
 import com.amazon.kumarnzt.viyuktasiddhi.model.CustomerSellerDataModel;
+import com.amazon.kumarnzt.viyuktasiddhi.model.PaymentData;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
@@ -71,14 +72,16 @@ public class MySmsReceiver extends BroadcastReceiver {
             CustomerSellerDataModel message= mapper.readValue(messageString, CustomerSellerDataModel.class);
             Log.d(TAG, message.getStoreId());
             Log.d(TAG, message.getAmount().toString());
-            MessageUtils.sendMessage(originatingAddress, "OTP for offline amazon payment " + OTPHandler.getOTP(originatingAddress));
+            MessageUtils.sendMessage(originatingAddress, "OTP for offline amazon payment " +
+                    OTPHandler.getOTP(originatingAddress, message.getAmount(), message.getStoreId()));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     private void processOTPMessage(final String messageString, final String originatingAddress) {
-        if (OTPHandler.validateOTP(originatingAddress, messageString)) {
+        PaymentData data = OTPHandler.getPaymentData(originatingAddress, messageString);
+        if (data != null) {
             //TODO: call to pay
             Log.d(TAG,"correct otp");
         }
