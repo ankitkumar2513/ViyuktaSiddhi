@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.SEND_SMS"/>
     <uses-permission android:name="android.permission.RECEIVE_SMS"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
             android:allowBackup="true"
@@ -14,6 +15,7 @@
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
         <activity
+                android:networkSecurityConfig="@xml/network_security_config"
                 android:name=".MainActivity"
                 android:label="@string/app_name"
                 android:theme="@style/AppTheme.NoActionBar">
@@ -22,6 +24,13 @@
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+        </activity>
+
+        <activity
+            android:networkSecurityConfig="@xml/network_security_config"
+            android:name=".PaymentProcessor"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar">
         </activity>
 
         <receiver

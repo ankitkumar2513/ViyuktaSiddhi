@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.SmsMessage;
@@ -11,9 +12,11 @@ import android.util.Log;
 import android.widget.Toast;
 import com.amazon.kumarnzt.viyuktasiddhi.model.CustomerSellerDataModel;
 import com.amazon.kumarnzt.viyuktasiddhi.model.PaymentData;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.amazon.kumarnzt.viyuktasiddhi.model.PaymentResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class MySmsReceiver extends BroadcastReceiver {
 
@@ -22,6 +25,12 @@ public class MySmsReceiver extends BroadcastReceiver {
     private static ObjectMapper mapper = new ObjectMapper();
 
     private static final String OTP_REGEX = "^[0-9]{4}$";
+
+    private ViyuktServiceClient viyuktServiceClient;
+
+    public MySmsReceiver() {
+        this.viyuktServiceClient = new ViyuktServiceClient();
+    }
 
     @TargetApi(Build.VERSION_CODES.M)
     @Override
@@ -62,8 +71,10 @@ public class MySmsReceiver extends BroadcastReceiver {
         final String strippedPhoneNumber = stripPhoneNumber(originatingAddress);
         if (messageString.matches(OTP_REGEX)) {
             processOTPMessage(messageString, strippedPhoneNumber);
-        } else {
+        } else if (messageString.startsWith("{") && messageString.endsWith("}")) {
             processRequestMessage(messageString, strippedPhoneNumber);
+        } else {
+            Log.i(TAG, "Ignoring message " + messageString);
         }
     }
 
@@ -82,12 +93,85 @@ public class MySmsReceiver extends BroadcastReceiver {
     private void processOTPMessage(final String messageString, final String originatingAddress) {
         PaymentData data = OTPHandler.getPaymentData(originatingAddress, messageString);
         if (data != null) {
-            //TODO: call to pay
+            Log.i(TAG, String.format("store %s phone number %s amount %f",
+            data.getStoreId(), originatingAddress, data.getAmount()));
+            new ProcessPayment().execute(
+                    data.getStoreId(),
+                    originatingAddress,
+                    Double.valueOf(data.getAmount()).toString());
             Log.d(TAG,"correct otp");
         }
     }
 
     private String stripPhoneNumber(final String phoneNumber) {
         return phoneNumber.replaceFirst("^\\+91", "");
+    }
+
+    private class ProcessPayment extends AsyncTask<String, Void, String> {
+        private String storeId;
+
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                Log.i(TAG, Arrays.toString(params));
+                storeId = params[0];
+                String phoneNumber = params[1];
+                double amount = Double.parseDouble(params[2]);
+                String paymentDetails = viyuktServiceClient.completePayment(storeId, phoneNumber, amount);
+                Log.i(TAG, paymentDetails);
+                return paymentDetails;
+            } catch (IOException e) {
+                Log.e(TAG, String.format("error %s \n exception: %s\n",
+                        e.getMessage(), Arrays.toString(e.getStackTrace())));
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            Log.i(TAG, "onPostExecute " + result);
+            try {
+                final PaymentResponse paymentResponse = mapper.readValue(result, PaymentResponse.class);
+
+                if ("SUCCESS".equals(paymentResponse.getStatus())) {
+
+                    // Send Message to customer
+                    String message = String.format("Payment of Rs. %.2f against store %s happened successfully. " +
+                                    "Current Balance Rs. %.2f",
+                            paymentResponse.getTransactionAmount(),
+                            storeId,
+                            paymentResponse.getApayCustomer().getCurrentBalance());
+                    Log.i(TAG, "Sending message " + message);
+                    MessageUtils.sendMessage(paymentResponse.getApayCustomer().getPhoneNumber(), message);
+
+                    //Send Message to store;
+                    String messageToStore = String.format("Payment of Rs. %.2f has been credited successfully. " +
+                                    "Current Balance Rs. %.2f",
+                            paymentResponse.getTransactionAmount(),
+                            paymentResponse.getApayCustomer().getCurrentBalance());
+                    MessageUtils.sendMessage(paymentResponse.getApayStore().getPhoneNumber(), messageToStore);
+                } else {
+                    // Send Message to customer
+
+                    String message = String.format("Payment of Rs. %.2f against store %s failed because of %s",
+                            paymentResponse.getTransactionAmount(),
+                            storeId,
+                            paymentResponse.getReason());
+                    Log.i(TAG, "Sending message " + message);
+                    MessageUtils.sendMessage(paymentResponse.getApayCustomer().getPhoneNumber(), message);
+                }
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
+
+        @Override
+        protected void onPreExecute() {
+            Log.i(TAG, "preExecute");
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {}
     }
 }
