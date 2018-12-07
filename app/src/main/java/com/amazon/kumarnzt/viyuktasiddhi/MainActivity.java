@@ -6,17 +6,15 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
-import org.codehaus.jackson.map.ObjectMapper;
+
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int MY_PERMISSIONS_REQUEST = 1;
     private static final String PHONE_NUMBER = "9427635124";
-    private static ObjectMapper mapper = new ObjectMapper();
     Button button;
 
     @Override
@@ -28,6 +26,10 @@ public class MainActivity extends AppCompatActivity {
         checkForSmsPermission();
 
         button = findViewById(R.id.send_message);
+
+        new PaymentProcessor.LongOperation().execute("test");
+
+        new PaymentProcessor.PaymentProcess().execute("test");
     }
 
     private void checkForSmsPermission() {
